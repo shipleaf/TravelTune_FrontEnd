@@ -1,8 +1,10 @@
 <template>
   <header class="app-header">
     <div class="app-header-inner">
-      <div class="app-header-left">
-        <div class="app-logo-icon">♪</div>
+      <div class="app-header-left" @click="handleMain">
+        <div class="logo-container">
+          <LpSpinner />
+        </div>
         <span class="app-logo-text">TravelTunes</span>
       </div>
 
@@ -17,7 +19,15 @@
 </template>
 
 <script setup>
+import LpSpinner from '@/components/auth/LpSpinner.vue'
 import SpotifyButton from './SpotifyButton.vue'
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
+
+const handleMain = () => {
+  router.push('/')
+}
 </script>
 
 <style scoped>
@@ -44,18 +54,19 @@ import SpotifyButton from './SpotifyButton.vue'
   display: flex;
   align-items: center;
   gap: 8px;
+  cursor: pointer;
 }
 
-.app-logo-icon {
-  width: 24px;
-  height: 24px;
-  border-radius: 999px;
-  background: color-mix(in oklch, var(--primary) 25%, transparent);
+.logo-container {
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--primary);
-  font-size: 11px;
+}
+
+.logo-container > * {
+  transform: scale(0.25);
 }
 
 .app-logo-text {
