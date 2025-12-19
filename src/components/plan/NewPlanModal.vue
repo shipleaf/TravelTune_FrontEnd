@@ -1,25 +1,30 @@
 <template>
   <div v-if="modelValue" class="modal" role="dialog" aria-modal="true" :aria-label="title">
-    <!-- 배경(오버레이): 여기 클릭하면 닫힘 -->
     <div class="modal__overlay" @click="close" />
     <article class="modal-container" @click.stop>
       <header class="modal-container-header">
-        <h1 class="modal-container-title">
+        <div class="modal-container-title">
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
             width="24"
             height="24"
-            aria-hidden="true"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            class="lucide lucide-calendar-plus-icon lucide-calendar-plus"
           >
-            <path fill="none" d="M0 0h24v24H0z" />
-            <path
-              fill="currentColor"
-              d="M14 9V4H5v16h6.056c.328.417.724.785 1.18 1.085l1.39.915H3.993A.993.993 0 0 1 3 21.008V2.992C3 2.455 3.449 2 4.002 2h10.995L21 8v1h-7zm-2 2h9v5.949c0 .99-.501 1.916-1.336 2.465L16.5 21.498l-3.164-2.084A2.953 2.953 0 0 1 12 16.95V11zm2 5.949c0 .316.162.614.436.795l2.064 1.36 2.064-1.36a.954.954 0 0 0 .436-.795V13h-5v3.949z"
-            />
+            <path d="M16 19h6" />
+            <path d="M16 2v4" />
+            <path d="M19 16v6" />
+            <path d="M21 12.598V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h8.5" />
+            <path d="M3 10h18" />
+            <path d="M8 2v4" />
           </svg>
-          {{ title }}
-        </h1>
+          <span>새로운 여행</span>
+        </div>
 
         <button class="icon-button" type="button" aria-label="Close" @click="close">
           <svg
@@ -38,20 +43,53 @@
         </button>
       </header>
 
-      <section class="modal-container-body rtf"></section>
+      <section class="modal-container-body rtf">
+        <VDatePicker v-model.range="range" borderless expanded :rows="2" class="my-calendar" />
+      </section>
 
       <footer class="modal-container-footer">
         <button class="button is-ghost" type="button" @click="$emit('decline')">Decline</button>
-        <button class="button is-primary" type="button" @click="$emit('accept')">Accept</button>
+        <button class="button is-primary" type="button" @click="$emit('accept')">
+          Accept
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            class="lucide lucide-move-right-icon lucide-move-right"
+          >
+            <path d="M18 8L22 12L18 16" />
+            <path d="M2 12H22" />
+          </svg>
+        </button>
       </footer>
     </article>
   </div>
 </template>
 
 <script setup>
+import { ref, watch } from 'vue'
+
+const range = ref({
+  start: '',
+  end: '',
+})
+
+watch(
+  range,
+  (newVal) => {
+    console.log('range 변경됨:', newVal.start, newVal.end)
+  },
+  { deep: true },
+)
+
 defineProps({
   modelValue: { type: Boolean, default: true },
-  title: { type: String, default: 'Terms and Services' },
 })
 
 const emit = defineEmits(['update:modelValue', 'accept', 'decline', 'close'])
@@ -63,6 +101,10 @@ const close = () => {
 </script>
 
 <style lang="scss" scoped>
+.modal-container-body :deep(.vc-header button) {
+  background: none;
+}
+
 .modal {
   position: fixed;
   inset: 0;
@@ -78,13 +120,12 @@ const close = () => {
   background-color: rgba(#000, 0.25);
 }
 
-/* 컨텐츠는 overlay 위에 */
 .modal-container {
   position: relative;
   z-index: 1;
 
-  max-height: 90vh;
-  max-width: 500px;
+  min-height: 600px;
+  width: 500px;
   margin-left: auto;
   margin-right: auto;
   background-color: #fff;
@@ -110,6 +151,8 @@ const close = () => {
 
 /* 원본 style.scss에서 modal~ 이하를 그대로 이식 */
 .modal-container {
+  display: flex;
+  flex-direction: column;
   max-height: 90vh;
   max-width: 500px;
   margin-left: auto;
@@ -141,18 +184,16 @@ const close = () => {
   gap: 8px;
   line-height: 1;
   font-weight: 700;
-  font-size: 1.125;
-
-  svg {
-    width: 32px;
-    height: 32px;
-    color: #750550;
-  }
+  font-size: 1.25rem;
 }
 
 .modal-container-body {
   padding: 24px 32px 51px;
   overflow-y: auto;
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
 }
 
 .modal-container-footer {
@@ -179,6 +220,9 @@ const close = () => {
 }
 
 .button {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   padding: 12px 20px;
   border-radius: 8px;
   background-color: transparent;

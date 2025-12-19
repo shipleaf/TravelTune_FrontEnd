@@ -1,4 +1,21 @@
 ﻿/* === 색 변수 & 테마 세팅 === */
+@import 'pretendard/dist/web/static/pretendard.css';
+
+html,
+body {
+  font-family:
+    Pretendard,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    'Helvetica Neue',
+    Arial,
+    'Noto Sans KR',
+    'Apple SD Gothic Neo',
+    'Malgun Gothic',
+    sans-serif;
+}
 
 :root {
   --background: oklch(0.12 0.01 240);
@@ -83,13 +100,6 @@ body {
   margin: 0;
   background: var(--background);
   color: var(--foreground);
-  font-family:
-    'Geist',
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    sans-serif;
 }
 
 /* 공통 스크롤바 스타일 (다크 + 네온 느낌) */

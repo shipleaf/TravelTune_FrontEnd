@@ -54,7 +54,6 @@ const handlePick = (attraction) => {
   if (!selectedSpot) {
     isLoading.value = true
     setSelectedSpot(attraction)
-    // ✅ 지도 이동/마커 하이라이트 같은 건 나중에 추가
   } else {
     alert('이미 선택된 관광지가 존재합니다.')
   }

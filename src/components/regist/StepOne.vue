@@ -19,11 +19,12 @@
             <label class="label" for="email">이메일</label>
             <input
               id="email"
-              v-model.trim="email"
+              v-model.trim="inputEmail"
               class="input"
               type="email"
               placeholder="이메일을 입력해 주세요"
               autocomplete="email"
+              value="inputEmail"
             />
             <p v-if="errors.email" class="error">{{ errors.email }}</p>
           </div>
@@ -33,7 +34,7 @@
             <div class="input-wrap">
               <input
                 id="password"
-                v-model="password"
+                v-model="inputPassword"
                 class="input pr"
                 :type="showPassword ? 'text' : 'password'"
                 placeholder="비밀번호를 입력해 주세요"
@@ -60,7 +61,7 @@
             <label class="label" for="password2">비밀번호 확인</label>
             <input
               id="password2"
-              v-model="password2"
+              v-model="inputPassword2"
               class="input"
               :type="showPassword ? 'text' : 'password'"
               placeholder="비밀번호를 다시 입력해 주세요"
@@ -82,14 +83,18 @@
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { checkEmail } from '@/api/memberApi'
+import { useSignupStore } from '@/stores/signup'
+import { storeToRefs } from 'pinia'
 
 const router = useRouter()
+const store = useSignupStore()
 
+const { email, password } = storeToRefs(store)
 const emit = defineEmits(['valid', 'inValid'])
 
-const email = ref('')
-const password = ref('')
-const password2 = ref('')
+const inputEmail = ref(email.value || '')
+const inputPassword = ref(password.value || '')
+const inputPassword2 = ref('')
 const showPassword = ref(false)
 
 const errors = reactive({
@@ -108,33 +113,33 @@ const validateStepOne = async () => {
   resetErrors()
   let ok = true
 
-  if (!email.value) {
+  if (!inputEmail.value) {
     errors.email = '이메일을 입력해 주세요.'
     ok = false
   } else {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(email.value)) {
+    if (!emailRegex.test(inputEmail.value)) {
       errors.email = '이메일 형식이 올바르지 않습니다.'
       ok = false
     }
   }
 
-  if (!password.value) {
+  if (!inputPassword.value) {
     errors.password = '비밀번호를 입력해 주세요.'
     ok = false
   }
 
-  if (!password2.value) {
+  if (!inputPassword2.value) {
     errors.password2 = '비밀번호 확인을 입력해 주세요.'
     ok = false
-  } else if (password.value !== password2.value) {
+  } else if (inputPassword.value !== inputPassword2.value) {
     errors.password2 = '비밀번호가 일치하지 않습니다.'
     ok = false
   }
 
   if (ok) {
     try {
-      const response = await checkEmail(email.value)
+      const response = await checkEmail(inputEmail.value)
       if (response.error) {
         errors.email = '이미 가입된 이메일입니다.'
         ok = false
@@ -145,12 +150,15 @@ const validateStepOne = async () => {
     }
   }
 
-  if (ok) emit('valid', { email, password })
-  else emit('inValid', { ...errors })
+  if (ok) {
+    emit('valid')
+    email.value = inputEmail
+    password.value = inputPassword
+  } else emit('inValid', { ...errors })
 
-  return true
+  // return true
   // TODO 주석 돌려놓기
-  // return ok
+  return ok
 }
 
 const goToLogin = () => {
