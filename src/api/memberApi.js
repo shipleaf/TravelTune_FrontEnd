@@ -1,13 +1,25 @@
+import { storeToRefs } from 'pinia'
 import axiosApi from './axiosApi'
+import { useTokenStore } from '@/stores/userTokenStore'
 
 // 로그인 api
-export const login = (credentials) => {
-  return axiosApi({
+export const login = async (credentials) => {
+  const response = await axiosApi({
     url: '/members/login',
     method: 'post',
     data: credentials,
     withCredentials: true,
   })
+
+  const accessToken = response.data.data.access_token
+
+  if (accessToken) {
+    const store = useTokenStore()
+    const { userAccessToken } = storeToRefs(store)
+    userAccessToken.value = accessToken
+  }
+
+  return response
 }
 
 // 회원가입 api
@@ -16,7 +28,6 @@ export const signup = (payload) => {
     url: '/members/signup',
     method: 'post',
     data: payload,
-    withCredentials: true,
   })
 }
 

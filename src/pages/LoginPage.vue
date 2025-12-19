@@ -107,7 +107,6 @@
             </div>
           </div>
 
-          <!-- Primary Button -->
           <button class="primary" type="button" @click="handleLogin">
             <span>로그인</span>
           </button>
@@ -189,10 +188,10 @@ const handleLogin = async () => {
   }
 
   try {
-    const response = await login(credentials)
-    console.log(response)
-  } catch {
-    return
+    await login(credentials)
+    router.push('/')
+  } catch (error) {
+    console.error(error)
   }
 }
 

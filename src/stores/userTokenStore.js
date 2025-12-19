@@ -1,20 +1,26 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
-export const useTokenStore = defineStore('token', () => {
-  const userAccessToken = ref(null)
+export const useTokenStore = defineStore(
+  'token',
+  () => {
+    const userAccessToken = ref(null)
 
-  const getUserAccessToken = () => {
-    return userAccessToken
-  }
+    const getUserAccessToken = () => {
+      return userAccessToken.value
+    }
 
-  const setUserAccessToken = (newUserToken) => {
-    userAccessToken.value = newUserToken
-  }
+    const setUserAccessToken = (newUserToken) => {
+      userAccessToken.value = newUserToken
+    }
 
-  const deleteAccessToken = () => {
-    userAccessToken.value = null
-  }
+    const deleteAccessToken = () => {
+      userAccessToken.value = null
+    }
 
-  return { userAccessToken, getUserAccessToken, setUserAccessToken, deleteAccessToken }
-})
+    return { userAccessToken, getUserAccessToken, setUserAccessToken, deleteAccessToken }
+  },
+  {
+    persist: true,
+  },
+)

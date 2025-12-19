@@ -24,8 +24,8 @@
             <div class="avatar-wrap">
               <div class="avatar">
                 <img
-                  v-if="profileImage"
-                  :src="profileImage"
+                  v-if="inputProfileImage"
+                  :src="inputProfileImage"
                   alt="Profile preview"
                   class="avatar-img"
                 />
@@ -64,7 +64,7 @@
             <label class="label" for="name">이름</label>
             <input
               id="name"
-              v-model.trim="name"
+              v-model.trim="inputName"
               class="input"
               type="text"
               placeholder="이름을 입력해 주세요"
@@ -78,7 +78,7 @@
             <div class="nickname-container">
               <input
                 id="nickname-input"
-                v-model.trim="nickname"
+                v-model.trim="inputNickname"
                 class="nickname-input"
                 type="text"
                 placeholder="닉네임을 입력해 주세요"
@@ -96,32 +96,32 @@
 </template>
 
 <script setup>
-// import { checkNickname } from '@/api/memberApi'
-import { mockCheckNickname } from '@/api/memberApi'
+import { checkNickname } from '@/api/memberApi'
+import { useSignupStore } from '@/stores/signup'
+// import { mockCheckNickname } from '@/api/memberApi'
 import { ref, reactive, watch } from 'vue'
+import { storeToRefs } from 'pinia'
 
-const name = ref('')
-const nickname = ref('')
-const profileImage = ref('') // 미리보기용 dataURL
-const fileInputRef = ref(null)
+const store = useSignupStore()
+
+const { name, profileImage, nickname } = storeToRefs(store)
+
+const inputName = ref('')
+const inputNickname = ref('')
+const inputProfileImage = ref('')
 const checkDuplication = ref(false)
 
 const handleImageUpload = async (e) => {
   const file = e.target.files?.[0]
   if (!file) return
 
-  // (선택) 이미지 파일만 허용
   if (!file.type.startsWith('image/')) return
 
-  // 미리보기: File -> dataURL(Base64)
   const reader = new FileReader()
   reader.onload = () => {
-    profileImage.value = reader.result
+    inputProfileImage.value = reader.result
   }
   reader.readAsDataURL(file)
-
-  // 같은 파일을 다시 선택해도 change가 뜨게 하려면 필요할 때 사용
-  // e.target.value = ''
 }
 
 watch(name, () => {
@@ -146,15 +146,11 @@ const resetErrors = () => {
 const checkDuplicated = async () => {
   resetErrors()
   try {
-    if (!nickname.value) {
-      console.log('is Empty!!!')
+    if (!inputNickname.value) {
       errors.nickname = '닉네임을 입력해 주세요.'
       return
     }
-    console.log('is Not Empty!!!')
-    // const response = await checkNickname(nickname)
-    const response = await mockCheckNickname(nickname)
-    console.log(response)
+    const response = await checkNickname(inputNickname.value)
     if (!response.data.has_nickname) checkDuplication.value = true
     else {
       checkDuplication.value = false
@@ -167,15 +163,16 @@ const checkDuplicated = async () => {
 }
 
 const validateStepTwo = () => {
+  console.log('refs:', { name, profileImage, nickname })
   resetErrors()
   let ok = true
 
-  if (!name.value) {
+  if (!inputName.value) {
     errors.name = '이름을 입력해 주세요.'
     ok = false
   }
 
-  if (!nickname.value) {
+  if (!inputNickname.value) {
     errors.nickname = '닉네임을 입력해 주세요.'
     ok = false
   } else if (!checkDuplication.value) {
@@ -183,6 +180,11 @@ const validateStepTwo = () => {
     ok = false
   }
 
+  if (ok) {
+    name.value = inputName.value
+    profileImage.value = inputProfileImage.value
+    nickname.value = inputNickname.value
+  }
   return ok
 }
 

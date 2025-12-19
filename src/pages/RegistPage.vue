@@ -8,7 +8,6 @@
 
       <div v-else class="checkbox-wrapper">
         <input type="checkbox" v-model="step1Checked" />
-        <!-- <span class="checkbox-number">1</span> -->
         <svg viewBox="0 0 35.6 35.6">
           <circle class="background" cx="17.8" cy="17.8" r="17.8"></circle>
           <circle class="stroke" cx="17.8" cy="17.8" r="14.37"></circle>
@@ -59,12 +58,18 @@
 </template>
 
 <script setup>
+import { useSignupStore } from '@/stores/signup'
 import { ref, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import StepOne from '@/components/regist/StepOne.vue'
 import StepTwo from '@/components/regist/StepTwo.vue'
+import { signup } from '@/api/memberApi'
+import { storeToRefs } from 'pinia'
 
 const router = useRouter()
+const store = useSignupStore()
+
+const { email, password, nickname } = storeToRefs(store)
 
 const currentStep = ref(1)
 const step1Checked = ref(false)
@@ -72,8 +77,6 @@ const step2Checked = ref(false)
 
 const stepOneRef = ref(null)
 const stepTwoRef = ref(null)
-
-const CHECK_ANIM_MS = 1000
 
 const nextStep = () => {
   if (currentStep.value < 2) currentStep.value = 2
@@ -111,9 +114,20 @@ const handleSubmit = async () => {
     step2Checked.value = true
   })
 
-  setTimeout(() => {
-    router.push('/signup-success')
-  }, CHECK_ANIM_MS)
+  try {
+    const userInput = {
+      email: email.value,
+      password: password.value,
+      nickname: nickname.value,
+    }
+    await signup(userInput)
+    email.value = ''
+    password.value = ''
+    nickname.value = ''
+    router.replace('/signup-success')
+  } catch (error) {
+    console.error(error)
+  }
 }
 </script>
 
