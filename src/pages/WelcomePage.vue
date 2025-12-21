@@ -6,7 +6,9 @@
 
     <main class="main-container">
       <div class="left">
-        <ShootingStars class="bg" :count="40" />
+        <FireWorks />
+        <!-- <ShootingStars class="bg" :count="40" /> -->
+        <AttractionRecommendations />
       </div>
 
       <!--TODO: 컨테이너 아래로 내려가면서 음악 추천-->
@@ -77,15 +79,22 @@
       </section>
 
       <div class="right">
-        <ShootingStars class="bg" :count="40" />
+        <FireWorks />
+        <!-- <ShootingStars class="bg" :count="40" /> -->
+        <div class="friend-container">
+          <FriendList />
+        </div>
       </div>
     </main>
   </div>
 </template>
 
 <script setup>
+import AttractionRecommendations from '@/components/main/AttractionRecommendations.vue'
 import ShootingStars from '@/components/main/ShootingStars.vue'
-import TrendAttractions from '@/components/main/TrendAttractions.vue'
+import FireWorks from '@/components/main/FireWorks.vue'
+import TrendAttractions from '@/components/main/UpcomingAttractions.vue'
+import FriendList from '@/components/main/FriendList.vue'
 import { ref, computed, onBeforeUnmount, nextTick, onMounted } from 'vue'
 import HeaderBar from '@/components/common/HeaderBar.vue'
 import { SendHorizontal, ImageUp } from 'lucide-vue-next'
@@ -187,7 +196,17 @@ onBeforeUnmount(() => {
 
 .left,
 .right {
+  position: relative;
+  display: flex;
+  flex-direction: column;
   width: 25%;
+}
+
+.friend-container {
+  position: absolute;
+  inset: 0;
+  left: 12px;
+  top: 32px;
 }
 
 .content-container {
