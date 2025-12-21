@@ -133,3 +133,108 @@ export const mockSearchUser = (nickname = '', page = 0, size = 5) => {
     }, 400) // 👉 네트워크 지연 느낌
   })
 }
+
+export const getReceiveddRequest = () => {
+  return axiosApi({
+    url: '/friends/requests/received',
+    method: 'get',
+    withCredentials: true,
+  })
+}
+
+// api/mock/getReceivedRequest.js
+export const getReceivedRequestMock = () => {
+  return Promise.resolve({
+    success: true,
+    data: [
+      {
+        friend_id: 10,
+        nickname: '김철수',
+        profile_image: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2',
+        created_at: '2025-12-05T12:00:00',
+      },
+      {
+        friend_id: 11,
+        nickname: '김철수2',
+        profile_image: 'https://images.unsplash.com/photo-1502685104226-ee32379fefbe',
+        created_at: '2025-12-05T12:00:01',
+      },
+      {
+        friend_id: 12,
+        nickname: '이영희',
+        profile_image: 'https://images.unsplash.com/photo-1527980965255-d3b416303d12',
+        created_at: '2025-12-06T09:30:00',
+      },
+    ],
+    error: null,
+  })
+}
+
+export const getFriends = () => {
+  return axiosApi({
+    url: '/api/v1/friends',
+    method: 'get',
+    withCredentials: true,
+  })
+}
+
+export const getFriendsMock = () => {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve({
+        success: true,
+        data: [
+          {
+            friend_id: 21,
+            member_id: 101,
+            nickname: '박민수',
+            profile_image: 'https://i.pravatar.cc/150?img=21',
+          },
+          {
+            friend_id: 22,
+            member_id: 102,
+            nickname: '최지은',
+            profile_image: 'https://i.pravatar.cc/150?img=22',
+          },
+          {
+            friend_id: 23,
+            member_id: 103,
+            nickname: '정우성',
+            profile_image: 'https://i.pravatar.cc/150?img=23',
+          },
+          {
+            friend_id: 24,
+            member_id: 104,
+            nickname: '한지민',
+            profile_image: 'https://i.pravatar.cc/150?img=24',
+          },
+          {
+            friend_id: 25,
+            member_id: 105,
+            nickname: '이준호',
+            profile_image: 'https://i.pravatar.cc/150?img=25',
+          },
+          {
+            friend_id: 26,
+            member_id: 106,
+            nickname: '김하늘',
+            profile_image: 'https://i.pravatar.cc/150?img=26',
+          },
+          {
+            friend_id: 27,
+            member_id: 107,
+            nickname: '오세훈',
+            profile_image: 'https://i.pravatar.cc/150?img=27',
+          },
+          {
+            friend_id: 28,
+            member_id: 108,
+            nickname: '서지수',
+            profile_image: 'https://i.pravatar.cc/150?img=28',
+          },
+        ],
+        error: null,
+      })
+    }, 1000) // ✅ 1초 네트워크 지연
+  })
+}
