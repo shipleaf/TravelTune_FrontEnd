@@ -127,7 +127,8 @@ const handleSelectSpot = (spot) => {
 <style scoped>
 .sidebar {
   position: relative;
-  width: 25vw;
+  width: 30%;
+  height: 70%;
   overflow-y: auto;
   overflow-x: visible;
   min-width: 400px;

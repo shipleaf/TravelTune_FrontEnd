@@ -47,8 +47,9 @@ const { selectedSpot } = storeToRefs(store)
 }
 /* MapArea.vue */
 .map-area {
-  width: 100%;
-  height: 100%; /* 부모(.mapContainer)가 차지한 높이를 그대로 */
+  flex: 1;
+  width: 50%;
+  height: 70%; /* 부모(.mapContainer)가 차지한 높이를 그대로 */
   position: relative;
   overflow: hidden;
   background: color-mix(in oklch, var(--background) 70%, black 10%);

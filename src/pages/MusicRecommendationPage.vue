@@ -3,8 +3,11 @@
     <HeaderBar />
 
     <div class="app-main">
-      <SideBar />
-      <MapArea class="mapContainer" />
+      <!-- <div class="page-title">music-recommedations</div> -->
+      <div class="contents">
+        <SideBar />
+        <MapArea />
+      </div>
     </div>
   </div>
 </template>
@@ -19,18 +22,23 @@ import MapArea from '@/components/music/MapArea.vue'
 .app-page {
   width: 100%;
   height: 100vh;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
 }
 
 .app-main {
-  flex: 1;
+  width: 100%;
+  padding: 0 15%;
   display: flex;
+  flex-direction: column;
   min-height: 0;
 }
 
+.contents {
+  display: flex;
+}
+
 .mapContainer {
-  flex: 1;
-  min-width: 0;
 }
 </style>

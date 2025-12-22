@@ -1,14 +1,7 @@
 <!-- 사이드바에 올라가는 관광지 컴포넌트 -->
 
 <template>
-  <div @click="handleSelectSpot" class="spot-card" :class="{ 'spot-card--active': isActive }">
-    <div class="spot-card-image-wrapper">
-      <img class="spot-card-image" :src="spot.image || '/placeholder.svg'" :alt="spot" />
-      <div class="spot-card-image-gradient" />
-      <div class="spot-card-badge">
-        <span>♫</span>
-      </div>
-    </div>
+  <div @click="handleSelectSpot" class="spot-card">
     <div class="spot-card-content">
       <div class="spot-card-title-row">
         <div class="spot-card-pin">
@@ -21,6 +14,11 @@
       <div class="spot-card-description">
         {{ spot.description }}
       </div>
+    </div>
+    <div class="spot-card-image-wrapper">
+      <img class="spot-card-image" :src="spot.image || '/placeholder.svg'" :alt="spot" />
+      <!--이미지 오버레이-->
+      <!-- <div class="spot-card-image-gradient" /> -->
     </div>
     <div v-if="isActive" class="spot-card-active-bar"></div>
   </div>
@@ -51,10 +49,13 @@ const isActive = computed(
 /* Spot card */
 
 .spot-card {
+  width: 100%;
+  height: fit-content;
+  padding: 12px;
+  display: flex;
   position: relative;
   overflow: hidden;
-  border-radius: 18px;
-  border: 1px solid var(--border);
+  border-radius: 6px;
   background: color-mix(in oklch, var(--card) 80%, transparent);
   cursor: pointer;
   box-shadow: 0 10px 22px rgba(15, 23, 42, 0.5);
@@ -65,23 +66,11 @@ const isActive = computed(
     background 0.18s ease;
 }
 
-.spot-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 15px 32px rgba(15, 23, 42, 0.75);
-  border-color: color-mix(in oklch, var(--primary) 60%, var(--border));
-}
-
-.spot-card--active {
-  border-color: var(--primary);
-  background: color-mix(in oklch, var(--card) 80%, var(--primary) 12%);
-  box-shadow:
-    0 0 0 1px rgba(56, 189, 248, 0.8),
-    0 18px 40px rgba(56, 189, 248, 0.25);
-}
-
 .spot-card-image-wrapper {
   position: relative;
-  height: 130px;
+  width: 208px;
+  height: 117px;
+  border-radius: 1rem;
   overflow: hidden;
 }
 
