@@ -95,7 +95,6 @@ onMounted(async () => {
 
     // ✅ contentId 기준으로 TourAPI 상세조회 후 병합
     const merged = await mapWithConcurrency(baseSpots, 5, async (spot) => {
-      console.log('ㅋㅋ')
       // contentId가 없다면 그대로 반환
       if (!spot.contentId) {
         console.log('id 없음')
