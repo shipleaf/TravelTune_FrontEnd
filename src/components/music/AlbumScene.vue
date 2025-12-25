@@ -24,10 +24,15 @@ import MusicPlayerContainer from './MusicPlayerContainer.vue'
 import * as THREE from 'three'
 import gsap from 'gsap'
 import { useSpotifyStore } from '@/stores/spotify'
+import { useSpotStore } from '@/stores/spot'
+import { storeToRefs } from 'pinia'
+import axiosApi from '@/api/axiosApi'
 
 const emit = defineEmits(['loaded'])
 
 const store = useSpotifyStore()
+const spotStore = useSpotStore()
+const { selectedPlayerSpot } = storeToRefs(spotStore)
 
 const tracks = ref([])
 
@@ -67,21 +72,24 @@ function spawnSelectedAlbumMesh(track) {
 
 // 🔹 Spotify 추천/검색 API 호출을 여기로 이동
 async function loadTracks() {
+  const attractionId = selectedPlayerSpot.value?.attraction_id
+  if (!attractionId) return
+
   try {
-    const res = await fetch('http://localhost:3001/api/recommend')
-    const data = await res.json()
+    const res = await axiosApi.get('/recommendations', {
+      params: { attraction_id: attractionId, size: 10 },
+    })
+    const list = res?.data?.data ?? []
 
-    let pk = 1
-
-    tracks.value = data.tracks.items.map((t) => ({
-      pk: pk++,
-      id: t.id,
-      title: t.name,
-      artist: t.artists.map((a) => a.name).join(', '),
-      albumImage: t.album?.images?.[0]?.url || '',
-      previewUrl: t.preview_url ?? 'https://samplelib.com/lib/preview/mp3/sample-3s.mp3',
-      hasPreview: !!t.preview_url,
-      mood: 'search',
+    tracks.value = list.map((t, idx) => ({
+      pk: t.music_id ?? idx,
+      id: t.spotify_id ?? t.music_id ?? idx,
+      title: t.title ?? '',
+      artist: t.artist_name ?? '',
+      albumImage: t.album_image ?? '',
+      previewUrl: t.preview_url ?? '',
+      hasPreview: Boolean(t.preview_url),
+      mood: 'recommendation',
       location: 'Spotify',
       spotifyUri: t.uri,
     }))
@@ -216,7 +224,7 @@ function startVinylRotation() {
 
   gsap.fromTo(
     lpGroup.position,
-    { x: -1.8 },
+    { x: -1.5 },
     {
       x: -1,
       duration: 0.8,
@@ -262,7 +270,7 @@ function revealPlayerUI() {
       {
         x: 0, // ✅ 제자리까지 당겨오기
         opacity: 1,
-        duration: 0.8,
+        duration: 1,
         ease: 'power3.out',
         onStart() {
           el.style.pointerEvents = 'auto'

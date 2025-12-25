@@ -4,18 +4,28 @@
   <div @click="handleSelectSpot" class="spot-card">
     <div class="spot-card-content">
       <div class="spot-card-title-row">
-        <div class="spot-card-title">
-          {{ spot.title }}
-        </div>
+        <div class="spot-card-title">{{ spot.title }}</div>
       </div>
-      <div class="spot-card-description">
-        {{ spot.description }}
+
+      <div class="spot-card-addr">{{ spot.sido_name }} {{ spot.gungu_name }}</div>
+
+      <div class="spot-card-like-row">
+        <button
+          class="like-btn"
+          type="button"
+          :aria-pressed="!!spot.is_liked"
+          @click.stop="$emit('like', spot)"
+        >
+          <Heart class="like-icon" :class="{ active: spot.is_liked }" />
+          <span class="count">{{ spot.like_cnt ?? 0 }}</span>
+        </button>
       </div>
-      <div class="spot-card-addr">{{ spot.addr1 }} {{ spot.addr2 }}</div>
     </div>
+
     <div class="spot-card-image-wrapper">
       <img class="spot-card-image" :src="spot.image_url || '/placeholder.svg'" :alt="spot" />
     </div>
+
     <Transition name="active-bar">
       <div v-if="isActive" class="spot-card-active-bar"></div>
     </Transition>
@@ -26,6 +36,7 @@
 import { computed } from 'vue'
 import { useSpotStore } from '@/stores/spot'
 import { storeToRefs } from 'pinia'
+import { Heart } from 'lucide-vue-next' // ✅ 추가
 
 const props = defineProps({
   spot: {
@@ -53,6 +64,7 @@ const isActive = computed(
   justify-content: space-between;
   position: relative;
   overflow: hidden;
+  flex: 0 0 auto;
   /* border-top: 1px solid oklch(0.65 0.02 240); */
   background: color-mix(in oklch, var(--card) 80%, transparent);
   cursor: pointer;
@@ -67,9 +79,10 @@ const isActive = computed(
 .spot-card-image-wrapper {
   position: relative;
   width: 160px;
-  height: 100px;
+  height: 120px;
   border-radius: 1rem;
   overflow: hidden;
+  flex-shrink: 0;
 }
 
 .spot-card-image {
@@ -177,5 +190,72 @@ const isActive = computed(
 .active-bar-leave-from {
   opacity: 1;
   transform: scaleY(1);
+}
+
+.spot-card-like-row {
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+}
+
+/* ✅ 버튼: pill 형태 + 적당히 큰 터치 영역 */
+.like-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 999px;
+
+  border: 1px solid color-mix(in oklch, var(--border) 70%, transparent);
+  background: color-mix(in oklch, var(--card) 65%, transparent);
+  color: rgba(255, 255, 255, 0.85);
+
+  cursor: pointer;
+  transition:
+    transform 0.12s ease,
+    background 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.like-btn:hover {
+  background: color-mix(in oklch, var(--card) 85%, transparent);
+  border-color: color-mix(in oklch, var(--primary) 40%, var(--border));
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.35);
+  transform: translateY(-1px);
+}
+
+.like-btn:active {
+  transform: translateY(0) scale(0.98);
+}
+
+/* ✅ 아이콘 크기 */
+.like-icon {
+  width: 18px;
+  height: 18px;
+  opacity: 0.9;
+}
+
+/* ✅ 좋아요 상태일 때: 핑크 + 살짝 글로우 */
+.like-icon.active {
+  opacity: 1;
+  color: rgba(236, 72, 153, 0.95);
+  filter: drop-shadow(0 6px 14px rgba(236, 72, 153, 0.35));
+}
+
+/* ✅ 카운트 */
+.like-btn .count {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  opacity: 0.9;
+}
+
+/* ✅ 좋아요 상태일 때 버튼 배경도 살짝 핑크톤 */
+.like-btn[aria-pressed='true'] {
+  border-color: color-mix(in oklch, rgba(236, 72, 153, 0.9) 50%, var(--border));
+  background: color-mix(in oklch, rgba(236, 72, 153, 0.16) 60%, transparent);
 }
 </style>

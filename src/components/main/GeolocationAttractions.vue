@@ -1,14 +1,17 @@
 <template>
+  <div class="prompt">
+    <label class="prompt__label">주변 관광지 추천</label>
+    <span class="prompt__desc"> 주변 관광지를 좋아요 순으로 추천해요 </span>
+  </div>
   <div class="carousel" @mouseenter="pause" @mouseleave="resume">
-    <div class="viewport">
-      <div class="track" :style="trackStyle">
-        <article v-for="spot in spots" :key="spot.attraction_id" class="card">
+    <div class="viewport" ref="viewportRef">
+      <div class="track" ref="trackRef" :style="trackStyle">
+        <article v-for="spot in displaySpots" :key="spot._key" class="card">
           <img class="img" :src="spot.image" :alt="spot.title" />
           <div class="overlay"></div>
 
-          <!-- ✅ 좋아요 뱃지 -->
           <div class="like-badge" aria-label="likes">
-            <span class="like-icon">♥</span>
+            <span class="like-icon"><Heart /></span>
             <span class="like-count">{{ spot.likeCount ?? 0 }}</span>
           </div>
 
@@ -19,130 +22,123 @@
         </article>
       </div>
     </div>
-
-    <div class="dots">
-      <button
-        v-for="(_, i) in spots.length"
-        :key="i"
-        class="dot"
-        :class="{ active: i === index }"
-        type="button"
-        @click="go(i)"
-        aria-label="go slide"
-      />
-    </div>
   </div>
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { fetchMockSpots } from '@/api/attractions'
+import { Heart } from 'lucide-vue-next'
 
 const spots = ref([])
-const index = ref(0)
-
-const intervalMs = 2500
-let timer = null
+const viewportRef = ref(null)
+const trackRef = ref(null)
+let rafId = null
+const speed = 0.6 // px per frame
+const offset = ref(0)
+const halfWidth = ref(0)
 
 const load = async () => {
   const res = await fetchMockSpots()
-  // ✅ data.data 구조
   spots.value = res?.data?.data ?? []
 }
 
-const next = () => {
-  if (!spots.value.length) return
-  index.value = (index.value + 1) % spots.value.length
+// ���� ���� ����: �����Ͱ� ��� ���� ���� ä�쵵�� ���� �� ����
+const displaySpots = computed(() => {
+  const list = spots.value || []
+  if (!list.length) return []
+  const minCards = 8
+  const repeats = Math.max(2, Math.ceil(minCards / list.length))
+  const merged = Array.from({ length: repeats }, () => list).flat()
+  return merged.map((s, idx) => ({ ...s, _key: `${s.attraction_id || idx}-${idx}` }))
+})
+
+const measure = () => {
+  const track = trackRef.value
+  if (!track) {
+    halfWidth.value = 0
+    return
+  }
+  halfWidth.value = track.scrollWidth / 2
 }
 
-const go = (i) => {
-  index.value = i
+const step = () => {
+  if (!displaySpots.value.length) return
+  if (!halfWidth.value) return
+
+  offset.value -= speed
+  if (Math.abs(offset.value) >= halfWidth.value) {
+    offset.value += halfWidth.value
+  }
+
+  rafId = requestAnimationFrame(step)
 }
 
 const start = () => {
   stop()
-  timer = window.setInterval(next, intervalMs)
+  measure()
+  if (!halfWidth.value) return
+  rafId = requestAnimationFrame(step)
 }
 
 const stop = () => {
-  if (timer) window.clearInterval(timer)
-  timer = null
+  if (rafId) cancelAnimationFrame(rafId)
+  rafId = null
 }
 
 const pause = () => stop()
-const resume = () => start()
+const resume = () => {
+  if (!rafId) start()
+}
 
 onMounted(async () => {
   await load()
+  await nextTick()
+  start()
+})
+
+watch(displaySpots, async () => {
+  await nextTick()
+  offset.value = 0
   start()
 })
 
 onBeforeUnmount(() => stop())
 
 const trackStyle = computed(() => ({
-  transform: `translateX(-${index.value * 100}%)`,
+  transform: `translateX(${offset.value}px)`,
 }))
 </script>
 
 <style lang="scss" scoped>
 .carousel {
   width: 100%;
-  max-width: 1100px;
+
   margin: 0 auto;
-}
-
-.like-badge {
-  position: absolute;
-  top: 14px;
-  right: 14px;
-  z-index: 2;
-
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-
-  padding: 8px 10px;
-  border-radius: 999px;
-
-  background: rgba(17, 24, 39, 0.55);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  backdrop-filter: blur(10px);
-
-  color: rgba(255, 255, 255, 0.95);
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.25);
-}
-
-.like-icon {
-  font-size: 12px;
-  line-height: 1;
-  transform: translateY(-0.5px);
-  opacity: 0.95;
-}
-
-.like-count {
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: -0.2px;
 }
 
 .viewport {
   border-radius: 18px;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(17, 24, 39, 0.4);
+  background: rgba(17, 24, 39, 0.35);
   backdrop-filter: blur(14px);
+  padding: 8px 4px;
 }
 
 .track {
-  display: flex;
-  width: 100%;
-  transition: transform 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+  display: inline-flex;
+  gap: 14px;
+  padding: 4px;
+  will-change: transform;
 }
 
 .card {
   position: relative;
-  min-width: 100%;
-  height: 340px;
+  min-width: 260px;
+  height: 240px;
+  border-radius: 14px;
+  overflow: hidden;
+  flex-shrink: 0;
 }
 
 .img {
@@ -155,20 +151,64 @@ const trackStyle = computed(() => ({
 .overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.15), transparent);
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.2), transparent);
+}
+
+.prompt {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  margin: 0 auto;
+  max-width: 1280px;
+  padding: 0 16px;
+}
+
+.prompt__label {
+  font-size: 22px;
+  font-weight: 700;
+  color: white;
+}
+
+.like-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: 999px;
+  background: rgba(17, 24, 39, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(10px);
+  color: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.25);
+}
+
+.like-icon {
+  font-size: 12px;
+  line-height: 1;
+}
+
+.like-count {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
 }
 
 .meta {
   position: absolute;
-  left: 18px;
-  bottom: 16px;
-  right: 18px;
+  left: 14px;
+  bottom: 12px;
+  right: 14px;
   color: white;
 }
 
 .title {
   margin: 0 0 6px;
-  font-size: 20px;
+  font-size: 17px;
   font-weight: 700;
   letter-spacing: -0.2px;
   text-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
@@ -176,34 +216,7 @@ const trackStyle = computed(() => ({
 
 .addr {
   margin: 0;
-  font-size: 14px;
+  font-size: 13px;
   opacity: 0.9;
-}
-
-.dots {
-  display: flex;
-  gap: 10px;
-  justify-content: center;
-  margin-top: 12px;
-}
-
-.dot {
-  height: 8px;
-  width: 8px;
-  border-radius: 999px;
-  border: none;
-  cursor: pointer;
-
-  background: rgba(255, 255, 255, 0.35);
-
-  transition:
-    width 0.35s cubic-bezier(0.22, 1, 0.36, 1),
-    background 0.25s ease,
-    opacity 0.25s ease;
-}
-
-.dot.active {
-  width: 28px; /* ✅ 길어지는 핵심 */
-  background: rgba(255, 255, 255, 0.95);
 }
 </style>

@@ -20,7 +20,7 @@ onMounted(() => {
     }
   }
 
-  router.push('/music')
+  router.push('/')
 })
 </script>
 

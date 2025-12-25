@@ -56,16 +56,12 @@ const props = defineProps({
 const emit = defineEmits(['select'])
 
 function handleClick(track) {
-  // 여기서 캐러셀 내부 클릭 이동 로직 + 최종 select 방출
-  // 클릭하면 가운데로 스냅시키고,
-  // 최종적으로 부모에 선택된 트랙 emit
   emit('select', track)
 }
 
 const boxesRef = ref(null)
 const dragProxyRef = ref(null)
 
-// GSAP/상태 공유용 변수들
 let goBySteps = null
 let keyHandler = null
 let boxClickHandler = null
@@ -74,7 +70,6 @@ let hoverHandler = null
 let leaveHandler = null
 let hoveredBox = null
 
-// Vue에서 쓸 핸들러 (버튼/키보드 공용)
 const handleNext = () => {
   console.log('next click!')
   if (goBySteps) goBySteps(1)

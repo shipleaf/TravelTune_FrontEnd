@@ -73,10 +73,8 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import {
-  getReceivedRequestMock as getReceivedRequests,
-  getFriendsMock as getFriends,
-} from '@/api/friendApi'
+import { getReceiveddRequest, getFriends } from '@/api/friendApi'
+
 import { ChevronRight, Check, X } from 'lucide-vue-next'
 import { useRouter } from 'vue-router'
 
@@ -95,7 +93,7 @@ const loadReceivedRequests = async () => {
   reqError.value = ''
 
   try {
-    const res = await getReceivedRequests()
+    const res = await getReceiveddRequest()
     if (res?.success) {
       receivedRequests.value = res.data ?? []
     } else {

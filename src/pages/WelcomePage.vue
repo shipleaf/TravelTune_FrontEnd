@@ -7,6 +7,42 @@
 
     <main class="main-container">
       <section class="content-container">
+        <div v-if="showPlayer" class="player-spacer" ref="playerSpacerRef">
+          <div v-if="recommendations.length" class="rec-heading">추천 음악</div>
+          <div v-if="recommendations.length" class="rec-wrapper">
+            <button
+              v-if="showPrev"
+              type="button"
+              class="rec-nav rec-nav--prev"
+              @click="scrollList(-1)"
+            >
+              ‹
+            </button>
+            <div class="rec-list" ref="recListRef" @scroll.passive="updateArrows">
+              <div
+                v-for="rec in recommendations"
+                :key="rec.music_id || rec.spotify_id || rec.uri"
+                class="rec-card"
+                :class="{ active: selectedTrack?.uri === rec.uri }"
+                @click="selectedTrack = rec"
+              >
+                <img :src="rec.album_image" alt="" />
+                <div class="rec-meta">
+                  <div class="rec-title">{{ rec.title }}</div>
+                  <div class="rec-artist">{{ rec.artist_name }}</div>
+                </div>
+              </div>
+            </div>
+            <button
+              v-if="showNext"
+              type="button"
+              class="rec-nav rec-nav--next"
+              @click="scrollList(1)"
+            >
+              ›
+            </button>
+          </div>
+        </div>
         <div class="prompt-container">
           <div class="content-1">
             <div class="mood-card">
@@ -18,6 +54,11 @@
                     <div class="file-upload-form">
                       <label for="file" class="file-upload-label">
                         <div
+                          v-if="isLoading"
+                          class="file-upload-design skeleton skeleton-upload"
+                        ></div>
+                        <div
+                          v-else
                           class="file-upload-design"
                           @dragenter.prevent="onDragEnter"
                           @dragover.prevent="onDragOver"
@@ -48,18 +89,24 @@
                           accept="image/*"
                           @change="onFileChange"
                           :class="{ 'has-preview': !!previewUrl }"
+                          :disabled="isLoading"
                         />
                       </label>
                     </div>
 
-                    <textarea
-                      ref="textareaRef"
-                      v-model="prompt"
-                      class="prompt__input"
-                      placeholder="예) 여행 중 찍은 사진이에요, 잔잔하고 감성적인 노래로 추천해 주세요."
-                      @input="autoGrow"
-                      @keydown.enter.exact.prevent="submit"
-                    />
+                    <template v-if="isLoading">
+                      <div class="prompt__input skeleton skeleton-textarea"></div>
+                    </template>
+                    <template v-else>
+                      <textarea
+                        ref="textareaRef"
+                        v-model="prompt"
+                        class="prompt__input"
+                        placeholder="예) 여행 중 찍은 사진이에요, 잔잔하고 감성적인 노래로 추천해 주세요."
+                        @input="autoGrow"
+                        @keydown.enter.exact.prevent="submit"
+                      />
+                    </template>
                   </div>
                   <div class="prompt-footer">
                     <p class="prompt__helper">팁: 업로드 한 사진의 분위기나 감정을 적어보세요</p>
@@ -68,10 +115,16 @@
                       <button
                         type="button"
                         class="send-button"
-                        :disabled="!canSubmit"
+                        :class="buttonStateClass"
+                        :disabled="!canSubmit || isLoading"
                         @click="submit"
                       >
-                        <SendHorizontal size="18" />
+                        <template v-if="isLoading">
+                          <span class="spinner" />
+                        </template>
+                        <template v-else>
+                          <SendHorizontal size="18" />
+                        </template>
                       </button>
                     </div>
                   </div>
@@ -91,7 +144,7 @@
         <GeolocationAttractions />
       </section>
     </main>
-    <MusicPlayer />
+    <MusicPlayer :external-track="selectedTrack" />
   </div>
 </template>
 
@@ -101,9 +154,11 @@ import IntroVideo from '@/components/main/IntroVideo.vue'
 import UpcomingPlan from '@/components/main/UpcomingPlan.vue'
 import GeolocationAttractions from '@/components/main/GeolocationAttractions.vue'
 import FriendList from '@/components/main/FriendList.vue'
-import { ref, computed, onBeforeUnmount, nextTick, onMounted } from 'vue'
+import { ref, computed, onBeforeUnmount, nextTick, onMounted, watch } from 'vue'
 import HeaderBar from '@/components/common/HeaderBar.vue'
 import { SendHorizontal, ImageUp } from 'lucide-vue-next'
+import { postMoodRecommendationsMock } from '@/api/recommendations'
+import { gsap } from 'gsap'
 
 const showIntro = ref(true)
 const isSkeleton = ref(false)
@@ -120,13 +175,26 @@ const onIntroFinished = () => {
 }
 const fileInputRef = ref(null)
 const textareaRef = ref(null)
+const playerSpacerRef = ref(null)
+const recListRef = ref(null)
 
 const isDragging = ref(false)
 const file = ref(null)
 const previewUrl = ref('')
 const prompt = ref('')
+const isLoading = ref(false)
+const showPlayer = ref(false)
+const recommendations = ref([])
+const selectedTrack = ref(null)
+const showPrev = ref(false)
+const showNext = ref(false)
 
-const canSubmit = computed(() => !!prompt.value.trim() && !!file.value)
+const canSubmit = computed(() => !!file.value)
+const buttonStateClass = computed(() => {
+  if (isLoading.value) return 'send-button--loading'
+  if (canSubmit.value) return 'send-button--active'
+  return ''
+})
 
 function openFileDialog() {
   fileInputRef.value?.click()
@@ -167,9 +235,93 @@ function onDrop(e) {
   setImage(e.dataTransfer?.files?.[0])
 }
 
+function runRevealAnimation() {
+  const spacer = playerSpacerRef.value
+  const cards = recListRef.value?.querySelectorAll('.rec-card')
+  const tl = gsap.timeline()
+
+  if (spacer) {
+    const targetHeight = spacer.scrollHeight || 60
+    tl.fromTo(
+      spacer,
+      { height: 0, opacity: 0 },
+      {
+        height: targetHeight,
+        opacity: 1,
+        duration: 0.45,
+        ease: 'power2.out',
+        clearProps: 'height',
+      },
+    )
+  }
+
+  if (cards && cards.length) {
+    tl.from(
+      cards,
+      {
+        x: -40,
+        opacity: 0,
+        duration: 0.45,
+        ease: 'power2.out',
+        stagger: 0.05,
+      },
+      '-=0.15',
+    )
+  }
+}
+
+function updateArrows() {
+  const el = recListRef.value
+  if (!el) {
+    showPrev.value = false
+    showNext.value = false
+    return
+  }
+  const maxScroll = el.scrollWidth - el.clientWidth - 2
+  showPrev.value = el.scrollLeft > 2
+  showNext.value = el.scrollLeft < maxScroll
+}
+
+function scrollList(direction) {
+  const el = recListRef.value
+  if (!el) return
+  const card = el.querySelector('.rec-card')
+  const step = card ? card.clientWidth + 14 : 200
+  el.scrollBy({ left: step * 3 * direction, behavior: 'smooth' })
+  setTimeout(updateArrows, 350)
+}
+
+watch(recommendations, () => {
+  nextTick(() => updateArrows())
+})
+
 function submit() {
-  if (!canSubmit.value) return
-  console.log('submit:', { prompt: prompt.value, file: file.value })
+  if (!canSubmit.value || isLoading.value) return
+  console.log('submit (prompt text은 전송하지 않음):', { prompt: prompt.value, file: file.value })
+
+  isLoading.value = true
+
+  postMoodRecommendationsMock()
+    .then((res) => {
+      const data = res.data?.data ?? res.data
+      console.log('목업 추천 결과:', data)
+      recommendations.value = data || []
+      selectedTrack.value = null
+      showPlayer.value = true
+      // 입력 초기화
+      prompt.value = ''
+      clearImage()
+      nextTick(() => {
+        runRevealAnimation()
+        updateArrows()
+      })
+    })
+    .catch((err) => {
+      console.error('목업 추천 호출 실패:', err)
+    })
+    .finally(() => {
+      isLoading.value = false
+    })
 }
 
 /** ✅ textarea 자동 높이 증가 + max 높이 이후 스크롤 */
@@ -202,9 +354,13 @@ onBeforeUnmount(() => {
 <style lang="scss" scoped>
 .prompt-container {
   width: 100%;
-  padding: 0 10%;
+  max-width: 1460px;
+  margin: 0 auto;
+  padding: 0 24px;
   display: flex;
   justify-content: center;
+  align-items: flex-start;
+  gap: 40px;
 }
 
 .page-header {
@@ -260,6 +416,9 @@ onBeforeUnmount(() => {
 
 .friend-container {
   z-index: 3;
+  flex: 0 0 340px;
+  align-self: stretch;
+  display: flex;
 }
 
 .content-container {
@@ -274,10 +433,10 @@ onBeforeUnmount(() => {
 
 .mood-card {
   width: 100%;
-  max-width: 900px;
+  max-width: 1460px;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 22px;
 }
 
 .prompt {
@@ -479,8 +638,9 @@ onBeforeUnmount(() => {
 .content-1 {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-  width: 70%;
+  gap: 1.4rem;
+  width: 100%;
+  flex: 1 1 0;
 }
 
 .prompt__helper {
@@ -516,5 +676,183 @@ onBeforeUnmount(() => {
 .send-button:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+
+.send-button--active {
+  color: #22c55e;
+}
+
+.send-button--loading {
+  color: #9ca3af;
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #22c55e;
+  animation: spin 0.8s linear infinite;
+  display: inline-block;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Skeleton styles */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.12) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transform: translateX(-100%);
+  animation: shimmer 1.4s infinite;
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.skeleton-upload {
+  width: 100%;
+  height: 100%;
+  border-radius: 12px;
+}
+
+.skeleton-textarea {
+  width: 100%;
+  height: 200px;
+  border-radius: 0 0 12px 12px;
+}
+
+.player-spacer {
+  width: 100%;
+  min-height: 48px;
+  padding: 8px 0 0;
+}
+
+.rec-wrapper {
+  position: relative;
+}
+
+.rec-list {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 330px;
+  gap: 18px;
+  overflow-x: hidden;
+  padding: 4px 36px;
+}
+
+.rec-card {
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 14px;
+  padding: 16px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+  transition:
+    transform 0.15s ease,
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+
+.rec-card img {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  border-radius: 16px;
+}
+
+.rec-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  text-align: left;
+}
+
+.rec-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.rec-artist {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.3;
+}
+
+.rec-card:hover {
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.rec-card.active {
+  background: rgba(34, 197, 94, 0.1);
+  box-shadow: 0 10px 32px rgba(34, 197, 94, 0.2);
+}
+
+.rec-heading {
+  font-size: 24px;
+  font-weight: 700;
+  color: #fff;
+  margin: 0 0 10px 4px;
+}
+
+.rec-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 64px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(10, 10, 12, 0.8);
+  color: #fff;
+  font-size: 22px;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition:
+    transform 0.15s ease,
+    background 0.15s ease;
+}
+
+.rec-nav:hover {
+  background: rgba(255, 255, 255, 0.12);
+  transform: translateY(-50%) scale(1.05);
+}
+
+.rec-nav--prev {
+  left: 4px;
+}
+
+.rec-nav--next {
+  right: 4px;
 }
 </style>
