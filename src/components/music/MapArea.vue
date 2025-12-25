@@ -14,10 +14,28 @@
         <OpenAlbumButton label="음악으로 떠나보기" clr="#7808d0" @click="renderMusicPlayer" />
       </div>
       <div class="text-area">
-        <h1 class="map-spot-title">{{ selectedSpot.title }}</h1>
-        <span>{{ selectedSpot.addr1 }} {{ selectedSpot.addr2 }}</span>
+        <h1 class="map-spot-title">
+          <span v-if="isDetailLoading" class="skeleton skeleton-title"></span>
+          <span v-else>{{ selectedSpot.title }}</span>
+        </h1>
+        <div class="meta-row">
+          <span v-if="isDetailLoading" class="skeleton skeleton-line"></span>
+          <span v-else>{{ selectedSpot.sido_name }} {{ selectedSpot.gungu_name }}</span>
+
+          <button
+            class="like-btn"
+            type="button"
+            :disabled="isLikeLoading"
+            :aria-pressed="!!selectedSpot.is_liked"
+            @click="toggleLike"
+          >
+            <Heart class="like-icon" :class="{ active: selectedSpot.is_liked }" />
+            <span class="count">{{ selectedSpot.like_cnt ?? 0 }}</span>
+          </button>
+        </div>
         <p class="map-spot-description desc-60">
-          {{ selectedSpot.description }}
+          <span v-if="isDetailLoading" class="skeleton skeleton-multi"></span>
+          <span v-else>{{ selectedSpot.description }}</span>
         </p>
       </div>
     </div>
@@ -32,22 +50,203 @@
 </template>
 
 <script setup>
+import { Heart } from 'lucide-vue-next'
 import OpenAlbumButton from './OpenAlbumButton.vue'
 import { storeToRefs } from 'pinia'
 import MapContainer from './MapContainer.vue'
-
+import { fetchDetailCommon2, extractDetailCommon2, postAttractionLike } from '@/api/attractions'
 import { useSpotStore } from '@/stores/spot'
+import { watch, ref } from 'vue'
 
 const store = useSpotStore()
 const { selectedSpot, selectedPlayerSpot } = storeToRefs(store)
+const { setSelectedSpot } = store
 
 const renderMusicPlayer = () => {
   selectedPlayerSpot.value = selectedSpot
+  console.log(selectedPlayerSpot)
   console.log(selectedPlayerSpot.value)
 }
+
+const isDetailLoading = ref(false)
+const isLikeLoading = ref(false)
+
+const applySpotPatch = (patch) => {
+  if (!selectedSpot.value) return
+  setSelectedSpot({ ...selectedSpot.value, ...patch })
+}
+
+const loadDetailIfNeeded = async (spot, onCleanup) => {
+  if (!spot || spot.description) return
+  const contentId = spot.contentId || spot.content_id
+  if (!contentId) return
+  isDetailLoading.value = true
+  let canceled = false
+  onCleanup(() => {
+    canceled = true
+  })
+  try {
+    const res = await fetchDetailCommon2(contentId)
+    if (canceled) return
+    const detail = extractDetailCommon2(res)
+    applySpotPatch(detail)
+  } catch (e) {
+    console.error(e)
+  } finally {
+    if (!canceled) isDetailLoading.value = false
+  }
+}
+
+const toggleLike = async () => {
+  if (!selectedSpot.value?.attraction_id || isLikeLoading.value) return
+  isLikeLoading.value = true
+  try {
+    await postAttractionLike(selectedSpot.value.attraction_id)
+    const currentLiked = Boolean(selectedSpot.value.is_liked)
+    const currentCount = Number(selectedSpot.value.like_cnt ?? 0)
+    const nextLiked = !currentLiked
+    const nextCount = nextLiked ? currentCount + 1 : Math.max(0, currentCount - 1)
+    applySpotPatch({ is_liked: nextLiked, like_cnt: nextCount })
+  } catch (e) {
+    console.error(e)
+  } finally {
+    isLikeLoading.value = false
+  }
+}
+
+watch(
+  () => selectedSpot.value,
+  async (spot, _, onCleanup) => {
+    await loadDetailIfNeeded(spot, onCleanup)
+  },
+  { immediate: true },
+)
 </script>
 
 <style scoped>
+.meta-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* ✅ pill 버튼: 카드/헤더 톤에 맞춘 유리질감 */
+.like-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 999px;
+
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(17, 24, 39, 0.35);
+  backdrop-filter: blur(10px);
+
+  color: rgba(255, 255, 255, 0.9);
+  cursor: pointer;
+
+  transition:
+    transform 0.12s ease,
+    background 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.like-btn:hover {
+  background: rgba(17, 24, 39, 0.5);
+  border-color: rgba(236, 72, 153, 0.35);
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.25);
+  transform: translateY(-1px);
+}
+
+.like-btn:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.like-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ✅ 아이콘 */
+.like-icon {
+  width: 18px;
+  height: 18px;
+  opacity: 0.9;
+  color: rgba(203, 213, 225, 0.95);
+  transition:
+    color 0.15s ease,
+    filter 0.15s ease,
+    transform 0.12s ease;
+}
+
+/* ✅ 좋아요 상태 */
+.like-icon.active {
+  color: rgba(236, 72, 153, 0.95);
+  filter: drop-shadow(0 8px 16px rgba(236, 72, 153, 0.35));
+  transform: translateY(-0.5px);
+}
+
+/* ✅ 눌린 상태일 때 버튼도 살짝 핑크 톤 */
+.like-btn[aria-pressed='true'] {
+  border-color: rgba(236, 72, 153, 0.45);
+  background: rgba(236, 72, 153, 0.12);
+}
+
+/* ✅ 카운트 */
+.like-btn .count {
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.2px;
+  opacity: 0.95;
+}
+
+.skeleton {
+  display: inline-block;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.08),
+    rgba(255, 255, 255, 0.2),
+    rgba(255, 255, 255, 0.08)
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s infinite;
+  border-radius: 6px;
+}
+
+.skeleton-title {
+  width: 320px;
+  height: 28px;
+}
+
+.skeleton-line {
+  width: 180px;
+  height: 14px;
+}
+
+.skeleton-multi {
+  display: block;
+  width: 100%;
+  max-width: 520px;
+  height: 48px;
+  margin-top: 6px;
+  border-radius: 10px;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
 .album-container {
   position: fixed;
   inset: 0;

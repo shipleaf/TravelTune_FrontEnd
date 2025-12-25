@@ -121,9 +121,9 @@ export const fetchDetailCommon2 = (contentId) => {
       contentId, // ✅ spot에 있는 contentId
 
       // ✅ 필요한 필드 내려오게 옵션 켜기
-      defaultYN: 'Y',
-      addrinfoYN: 'Y',
-      overviewYN: 'Y',
+      // defaultYN: 'Y',
+      // addrinfoYN: 'Y',
+      // overviewYN: 'Y',
 
       // 안전하게 1건만
       numOfRows: 1,
@@ -140,8 +140,18 @@ export const extractDetailCommon2 = (res) => {
   return {
     addr1: item?.addr1 ?? '',
     addr2: item?.addr2 ?? '',
-    description: item?.overview ?? '', // ✅ overview를 description으로 사용
+    description: item?.overview?.trim() || '설명이 없습니다.',
+    title: item?.title ?? '',
+    image_url: item?.firstimage ?? item?.firstimage2 ?? '',
   }
+}
+
+export const postAttractionLike = (attractionId) => {
+  return axiosApi({
+    url: `/attractions/${attractionId}/like`,
+    method: 'post',
+    withCredentials: true,
+  })
 }
 
 export const fetchRecommendationAttractions = (itinerary_id, sido_id, gungu_id) => {

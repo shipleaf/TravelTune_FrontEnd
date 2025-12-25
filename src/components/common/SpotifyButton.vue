@@ -27,27 +27,33 @@
 </template>
 
 <script setup>
+import axiosApi from '@/api/axiosApi'
 import { useSpotifyStore } from '@/stores/spotify'
 import { storeToRefs } from 'pinia'
 import { computed, onMounted } from 'vue'
-import axiosApi from '@/api/axiosApi'
 
 const store = useSpotifyStore()
 const { accessToken } = storeToRefs(store)
-const { clearToken } = store
 
-onMounted(() => {
-  console.log(accessToken)
-})
+// function loginWithSpotify() {
+//   window.location.href = 'http://localhost:3001/login'
+// }
 
 async function loginWithSpotify() {
   try {
     const res = await axiosApi.get('/spotify/login')
-    if (res?.data?.success && res?.data?.data?.auth_url) {
-      window.location.href = res.data.data.auth_url
+
+    const url = res?.data?.data?.auth_url
+    const success = res?.data?.success
+
+    if (success && url) {
+      window.location.href = url
+      return
     }
+
+    console.error('Spotify login URL이 응답에 없습니다:', res?.data)
   } catch (e) {
-    console.error(e)
+    console.error('Spotify 로그인 요청 실패:', e)
   }
 }
 
@@ -56,10 +62,13 @@ const isOn = computed({
     return !!accessToken.value
   },
   set(value) {
-    if (value && !accessToken.value) {
-      loginWithSpotify()
-    } else if (!value) {
-      clearToken()
+    if (value) {
+      if (!accessToken.value) {
+        loginWithSpotify()
+      }
+    } else {
+      // 토글 OFF 시 토큰 제거
+      store.clearToken()
     }
   },
 })

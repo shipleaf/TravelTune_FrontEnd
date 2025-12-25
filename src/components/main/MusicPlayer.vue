@@ -1,14 +1,13 @@
 <template>
   <div class="player-bar" :style="barStyle" role="region" aria-label="Music Player">
-    <!-- 왼쪽: 재생 버튼 + 곡 정보 -->
     <div class="left">
       <button class="play-btn" type="button" aria-label="Play/Pause" @click="togglePlay">
-        {{ isPlaying ? '❚❚' : '▶' }}
+        {{ isPlaying ? '⏸' : '▶' }}
       </button>
 
       <div class="cover" aria-hidden="true">
         <img v-if="album_image" :src="album_image" alt="" />
-        <div v-else class="cover-fallback">♫</div>
+        <div v-else class="cover-fallback">♪</div>
       </div>
 
       <div class="meta">
@@ -17,7 +16,6 @@
       </div>
     </div>
 
-    <!-- 가운데: 무드 버튼만 -->
     <div class="moods" role="tablist" aria-label="Travel moods">
       <button
         v-for="m in moods"
@@ -29,12 +27,10 @@
         role="tab"
         :aria-selected="selectedMood === m.key"
       >
-        <span class="emoji">{{ m.emoji }}</span>
         <span class="label">{{ m.label }}</span>
       </button>
     </div>
 
-    <!-- 오른쪽: 볼륨 -->
     <div class="right">
       <button class="chip" type="button" @click="toggleMute">
         {{ isMuted ? 'Muted' : 'Volume' }}
@@ -52,7 +48,6 @@
       />
     </div>
 
-    <!-- 아래: 재생바(전체 폭) -->
     <div class="progress-row">
       <span class="time">{{ formatTime(currentTime) }}</span>
 
@@ -84,34 +79,41 @@
 </template>
 
 <script setup>
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, onMounted, watch } from 'vue'
+import { useSpotifyStore } from '@/stores/spotify'
+import { storeToRefs } from 'pinia'
 
-/** ✅ 분위기 태그 (4개) */
+const props = defineProps({
+  externalTrack: {
+    type: Object,
+    default: null,
+  },
+})
+
 const moods = [
-  { key: '힐링', label: '힐링', emoji: '🌿' },
-  { key: '청량', label: '청량', emoji: '🌊' },
-  { key: '감성', label: '감성', emoji: '🌙' },
-  { key: '에너지', label: '에너지', emoji: '🔥' },
+  { key: 'healing', label: '힐링' },
+  { key: 'fresh', label: '상큼' },
+  { key: 'emo', label: '감성' },
+  { key: 'energy', label: '에너지' },
 ]
 
-/** ✅ public/audio/ 에 MP3 넣어두기 */
 const moodConfig = {
-  힐링: {
+  healing: {
     accent: '163, 177, 138',
     tracks: [
       { title: 'Quiet Morning', artist: 'Free Library', src: '/audio/healing-01.mp3' },
       { title: 'Soft Breeze', artist: 'Free Library', src: '/audio/healing-02.mp3' },
     ],
   },
-  청량: {
+  fresh: {
     accent: '126, 214, 223',
     tracks: [{ title: 'Sunny Walk', artist: 'Free Library', src: '/audio/fresh-01.mp3' }],
   },
-  감성: {
+  emo: {
     accent: '108, 99, 255',
     tracks: [{ title: 'Late Night', artist: 'Free Library', src: '/audio/emotion-01.mp3' }],
   },
-  에너지: {
+  energy: {
     accent: '239, 35, 60',
     tracks: [
       {
@@ -124,21 +126,20 @@ const moodConfig = {
   },
 }
 
-const selectedMood = ref('힐링')
-
-/** ✅ UI 상태 */
-const title = ref('선택된 음악 없음')
+const selectedMood = ref('healing')
+const title = ref('재생할 곡을 선택해 주세요')
 const artist = ref('TravelTune')
 const album_image = ref('')
 
 const isPlaying = ref(false)
 const isMuted = ref(false)
-
 const duration = ref(0)
 const currentTime = ref(0)
 const volume = ref(0.75)
-
 const audioRef = ref(null)
+
+const spotifyStore = useSpotifyStore()
+const { accessToken } = storeToRefs(spotifyStore)
 
 const barStyle = computed(() => {
   const accent = moodConfig[selectedMood.value]?.accent ?? '255,255,255'
@@ -157,21 +158,17 @@ const applyAudioSettings = () => {
 const playTrack = async (track) => {
   const a = audioRef.value
   if (!a || !track?.src) return
-
   title.value = track.title
   artist.value = track.artist
   album_image.value = track.album_image
-
-  // ✅ 새 곡 세팅
   a.src = track.src
   a.currentTime = 0
   applyAudioSettings()
-
   try {
     await a.play()
-    // play 이벤트에서 isPlaying=true로 맞춰짐
-  } catch {
-    // 자동재생 정책 등으로 실패할 수 있음
+    isPlaying.value = true
+  } catch (e) {
+    console.error('재생 실패:', e)
     isPlaying.value = false
   }
 }
@@ -186,24 +183,24 @@ const selectMood = async (mood) => {
 const togglePlay = async () => {
   const a = audioRef.value
   if (!a) return
-
-  // 아직 src가 없으면 현재 mood에서 하나 틀기
   if (!a.src) {
     const list = moodConfig[selectedMood.value]?.tracks ?? []
     if (!list.length) return
     await playTrack(pickRandom(list))
     return
   }
-
   if (a.paused) {
     try {
       applyAudioSettings()
       await a.play()
-    } catch {
+      isPlaying.value = true
+    } catch (e) {
+      console.error('재생 실패:', e)
       isPlaying.value = false
     }
   } else {
     a.pause()
+    isPlaying.value = false
   }
 }
 
@@ -226,7 +223,6 @@ const onVolume = (e) => {
   if (a) a.volume = volume.value
 }
 
-/** ✅ 재생바 반영용 */
 const onTimeUpdate = () => {
   const a = audioRef.value
   if (!a) return
@@ -253,7 +249,6 @@ const onPause = () => {
 }
 
 const onEnded = async () => {
-  // ✅ 끝나면 같은 mood에서 랜덤으로 다음 곡
   const list = moodConfig[selectedMood.value]?.tracks ?? []
   if (!list.length) return
   await playTrack(pickRandom(list))
@@ -266,8 +261,107 @@ const formatTime = (sec) => {
   return `${m}:${String(s).padStart(2, '0')}`
 }
 
+async function hasActiveDevice() {
+  if (!accessToken.value) return false
+  try {
+    const res = await fetch('https://api.spotify.com/v1/me/player/devices', {
+      headers: { Authorization: `Bearer ${accessToken.value}` },
+    })
+    if (!res.ok) return false
+    const body = await res.json()
+    const devices = body?.devices ?? []
+    const active = devices.find((d) => d.is_active)
+    if (active) return true
+
+    // 활성 디바이스가 없으면 기본 디바이스로 전환
+    const target = devices[0]
+    if (target?.id) {
+      await fetch('https://api.spotify.com/v1/me/player', {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${accessToken.value}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ device_ids: [target.id], play: false }),
+      })
+      return true
+    }
+    return false
+  } catch (e) {
+    console.warn('Spotify 디바이스 조회 실패', e)
+    return false
+  }
+}
+
+async function playOnSpotify(uri) {
+  if (!uri || !accessToken.value) return false
+  const hasDevice = await hasActiveDevice()
+  if (!hasDevice) {
+    console.warn('활성 Spotify 디바이스가 없어 프리뷰로 폴백합니다.')
+    return false
+  }
+  try {
+    const res = await fetch('https://api.spotify.com/v1/me/player/play', {
+      method: 'PUT',
+      headers: {
+        Authorization: `Bearer ${accessToken.value}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ uris: [uri] }),
+    })
+    if (!res.ok) {
+      let reason = ''
+      try {
+        const body = await res.json()
+        reason = body?.error?.reason || body?.error?.message
+      } catch {
+        /* ignore */
+      }
+      console.warn('Spotify play 실패', res.status, reason || res.statusText)
+      return false
+    }
+    return true
+  } catch (e) {
+    console.error('Spotify play 요청 에러', e)
+    return false
+  }
+}
+
+const fallbackExternalSrc = '/audio/healing-01.mp3'
+const playExternal = async (ext) => {
+  if (!ext) return
+  title.value = ext.title || 'Unknown Title'
+  artist.value = ext.artist_name || ext.artist || 'Unknown Artist'
+  album_image.value = ext.album_image || ''
+
+  // Spotify URI가 있고 토큰이 있으면 Spotify 재생 시도
+  if (ext.uri && accessToken.value) {
+    const ok = await playOnSpotify(ext.uri)
+    if (ok) {
+      isPlaying.value = true
+      return
+    }
+  }
+
+  const src = ext.preview_url || ext.previewUrl || fallbackExternalSrc
+  await playTrack({
+    title: title.value,
+    artist: artist.value,
+    album_image: album_image.value,
+    src,
+  })
+}
+
+watch(
+  () => props.externalTrack,
+  async (val) => {
+    if (val) {
+      await playExternal(val)
+    }
+  },
+)
+
 onMounted(() => {
-  // 초기 볼륨 적용 (사용자가 바로 play 눌러도 동일 볼륨)
   applyAudioSettings()
 })
 </script>
@@ -284,8 +378,8 @@ onMounted(() => {
   height: 120px;
 
   display: grid;
-  grid-template-columns: 1.6fr 2fr 1fr; /* 왼 / 가운데(무드) / 오른 */
-  grid-template-rows: 1fr auto; /* 위(컨텐츠) / 아래(프로그레스) */
+  grid-template-columns: 1.6fr 2fr 1fr;
+  grid-template-rows: 1fr auto;
   gap: 10px 16px;
 
   padding: 12px 3%;
@@ -302,13 +396,12 @@ onMounted(() => {
   --accent: 255, 255, 255;
 }
 
-/* ✅ 태그 영역 */
 .moods {
   grid-column: 2;
   grid-row: 1;
 
   display: flex;
-  justify-content: center; /* ✅ 가운데 정렬 */
+  justify-content: center;
   align-items: center;
   gap: 10px;
 
@@ -334,9 +427,6 @@ onMounted(() => {
     border-color 0.15s ease,
     box-shadow 0.15s ease;
 
-  .emoji {
-    font-size: 16px;
-  }
   .label {
     font-size: 0.9rem;
     font-weight: 650;
@@ -355,7 +445,6 @@ onMounted(() => {
   }
 }
 
-/* 왼쪽 */
 .left {
   grid-column: 1;
   grid-row: 1;
@@ -407,7 +496,6 @@ onMounted(() => {
   text-overflow: ellipsis;
 }
 
-/* 가운데 */
 .center {
   display: flex;
   flex-direction: column;
@@ -420,7 +508,6 @@ onMounted(() => {
   justify-content: center;
 }
 
-/* 버튼들 */
 .play-btn,
 .chip {
   border: none;
@@ -489,7 +576,6 @@ onMounted(() => {
   }
 }
 
-/* 오른쪽 */
 .right {
   grid-column: 3;
   grid-row: 1;
@@ -529,7 +615,6 @@ onMounted(() => {
   }
 }
 
-/* 반응형 */
 @media (max-width: 720px) {
   .player-bar {
     width: calc(100% - 18px);

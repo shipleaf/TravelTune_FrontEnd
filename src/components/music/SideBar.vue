@@ -33,6 +33,7 @@
           :key="spot.attraction_id"
           :spot="spot"
           @click="handleSelectSpot(spot)"
+          @like="handleToggleLike"
         />
       </div>
     </div>
@@ -45,7 +46,7 @@ import SpotCard from './SpotCard.vue'
 import SiGunguSelectForm from './SiGunguSelectForm.vue'
 import { useSpotStore } from '@/stores/spot'
 import { useFilterStore } from '@/stores/filter'
-import { fetchSpots } from '@/api/attractions'
+import { fetchSpots, postAttractionLike } from '@/api/attractions'
 import { storeToRefs } from 'pinia'
 
 const store = useSpotStore()
@@ -128,12 +129,13 @@ const fetchAndSetSpots = async ({ reset = false } = {}) => {
   try {
     const response = await fetchSpots(buildFilterParams({ cursor: cursor.value }))
     const data = response?.data?.data ?? {}
+
     const attractions = data.attractions ?? []
 
     mockSpots.value = reset ? attractions : [...mockSpots.value, ...attractions]
     setSpots(mockSpots.value)
     cursor.value = data.next_cursor ?? null
-    hasNext.value = Boolean(data.has_next)
+    hasNext.value = data.has_next ?? Boolean(data.next_cursor)
   } catch (e) {
     hasNext.value = false
   } finally {
@@ -142,6 +144,7 @@ const fetchAndSetSpots = async ({ reset = false } = {}) => {
 }
 
 const handleApplyFilters = () => {
+  setSelectedSpot(null)
   closeRegionModal()
   fetchAndSetSpots({ reset: true })
 }
@@ -157,7 +160,7 @@ const handleListScroll = () => {
   const el = listRef.value
   if (!el || isLoading.value || !hasNext.value) return
 
-  const nearBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 50
+  const nearBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 150
   if (nearBottom) {
     fetchAndSetSpots()
   }
@@ -184,6 +187,21 @@ watch(keyword, handleKeywordChange)
 const handleSelectSpot = (spot) => {
   setSelectedSpot(spot)
 }
+
+const handleToggleLike = async (spot) => {
+  if (!spot?.attraction_id) return
+  try {
+    await postAttractionLike(spot.attraction_id)
+    const currentLiked = Boolean(spot.is_liked)
+    const currentCount = Number(spot.like_cnt ?? 0)
+    const nextLiked = !currentLiked
+    const nextCount = nextLiked ? currentCount + 1 : Math.max(0, currentCount - 1)
+    spot.is_liked = nextLiked
+    spot.like_cnt = nextCount
+  } catch (e) {
+    console.error(e)
+  }
+}
 </script>
 
 <style scoped>
@@ -192,6 +210,7 @@ const handleSelectSpot = (spot) => {
   width: 30%;
   min-width: 500px;
   height: 70%;
+  min-height: 600px;
   overflow-y: auto;
   overflow-x: visible;
   background: color-mix(in oklch, var(--sidebar) 80%, transparent);
@@ -202,6 +221,7 @@ const handleSelectSpot = (spot) => {
 }
 
 .sidebar-inner {
+  height: 100%;
   overflow-x: visible;
   display: flex;
   flex-direction: column;
@@ -243,6 +263,7 @@ const handleSelectSpot = (spot) => {
 .sidebar-list {
   flex: 1;
   overflow-y: auto;
+  min-height: 0;
   padding-right: 6px;
   display: flex;
   flex-direction: column;
